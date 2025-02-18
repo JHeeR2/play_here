@@ -43,12 +43,15 @@ public class UserImageController {
                         .body(resource);
             } else {
                 // 파일이 존재하지 않거나 읽을 수 없는 경우 404 반환
+            	
                 return ResponseEntity.notFound().build();
             }
         } catch (MalformedURLException e) {
+        	e.printStackTrace();
             // 파일 경로가 잘못된 경우 400 반환
             return ResponseEntity.badRequest().build();
         } catch (IOException e) {
+        	e.printStackTrace();
             // 그 외 I/O 에러 발생 시 500 반환
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

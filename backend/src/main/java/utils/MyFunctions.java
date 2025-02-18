@@ -4,7 +4,6 @@ import java.io.File;
 import java.util.UUID;
 
 public class MyFunctions {
-	
 	/*
 	UUID(Universally Unique Identifier) : 직역하면 '범용 고유 식별자'
 	 라고 한다. JDK에서 기본으로 제곧외는 클래스로 32자의 영문과 숫자를 포함한
