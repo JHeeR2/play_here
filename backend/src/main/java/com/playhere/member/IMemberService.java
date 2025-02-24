@@ -14,6 +14,7 @@ public interface IMemberService {
 	
 	//회원가입(DB입력)
 	public int insertMemberinfo(MemberDTO memberDTO);
+	
 	//회원가입 후 회원의 선호도 입력
 	public int insertUserPreferences(List<UserPreferenceDTO> preferences);
 
@@ -26,10 +27,25 @@ public interface IMemberService {
 	// 정보 수정
 	public void updateUser(MemberDTO updatedUser);
 
+	//커플 끊기 
 	public void disconnectCouple(String userId);
 	
 	// 회원 탈퇴
 	public void withdrawUser(String userId);
+	
+	//커플 상태 업데이트 추가 (커플 맺을때)
+	public void updateCoupleStatus(@Param("userId") String userId, @Param("coupleId") int coupleId);
+	
+	//커플 상태 2인 사람 0으로 고치기 
+	public void updateCoupleStatus2to0(@Param("userId") String userId);
 
+	// 선호도 수정
+	public void updateUserPreferences(String userId, List<Integer> preferenceIds);
+
+	// 현재 선호도 조회
+	public List<Integer> getUserPreferences(String userId);
+
+	// 기존 선호도 삭제
+	public void deleteUserPreferences(String userId);
 
 }
