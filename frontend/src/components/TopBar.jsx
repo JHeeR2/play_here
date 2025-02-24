@@ -11,21 +11,22 @@ import {
     Nav,
     Dropdown,
     Button,
-    Modal,
 } from "react-bootstrap";
 import "../css/Bar.css";
 import { useContext } from "react";
 import { UserContext } from "../contexts/UserContext";
+import Swal from "sweetalert2";
 import axios from "axios";
+import qs from "qs";
 
 const TopBar = () => {
     const remoteIp = import.meta.env.VITE_REMOTE_IP;
     const port = import.meta.env.VITE_PORT;
     // context에서 로그인 상태, 유저 정보 가져오기
     const { userInfo, isLoggedIn, setIsLoggedIn } = useContext(UserContext);
-
-    const [showModal, setShowModal] = useState(false); // 모달 표시 상태
     const navigate = useNavigate();
+    const location = useLocation();
+    const [searchKeyword, setSearchKeyword] = useState("");
 
     // profilePicture가 존재하면 백엔드에서 이미지를 서빙하는 URL을 구성합니다.
     const profilePictureUrl =
@@ -45,9 +46,7 @@ const TopBar = () => {
             if (response.data === "logout success") {
                 // 로그인 상태 토글 및 UI 업데이트
                 setIsLoggedIn(false);
-                setShowModal(false);
-                navigate("/login");
-                alert("로그아웃 되었습니다.");
+                navigate("/search");
             }
         } catch (error) {
             console.error("로그아웃 오류:", error);
@@ -59,15 +58,63 @@ const TopBar = () => {
     const handleCalendarClick = (e) => {
         if (!isLoggedIn) {
             e.preventDefault(); // 기본 페이지 이동 막기
-            setShowModal(true); // 모달 표시
+            Swal.fire({
+                icon: "warning",
+                title: "로그인을 해주세요",
+                text: "캘린더를 이용하려면 로그인이 필요합니다.",
+
+                showCancelButton: true,
+                confirmButtonText: "로그인 하기",
+                confirmButtonColor: "#e91e63",
+                cancelButtonText: "닫기",
+                cancelButtonColor: "#666666",
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    navigate("/login");
+                }
+            });
         }
     };
 
-    const location = useLocation();
+    const searchPlace = async (searchKeyword) => {
+        try {
+            // 검색어를 공백 기준 배열로 변환 (빈 배열이면 조건문에서 무시됨)
+            const searchWordArray = searchKeyword
+                ? searchKeyword.split(" ")
+                : [];
+            const response = await axios.get(
+                `http://localhost:8586/placeList.do`,
+                {
+                    params: {
+                        searchWord: searchWordArray, // 배열 전달
+                        searchLocation: [],
+                        searchCategory: [],
+                        pageNum : 1,
+                        userId: userInfo?.userId,
+                    },
+                    paramsSerializer: (params) =>
+                                        qs.stringify(params, { arrayFormat: "repeat" }),
+                }
+            );
+            console.log(response.data);
+            // 검색 결과를 searchList 페이지로 state를 통해 전달합니다.
+            navigate("/searchlist", {
+                state: { results: response.data, keyword: searchKeyword },
+            });
+        } catch (error) {
+            console.error("검색 실패:", error);
+        }
+    };
+
+    // 폼 제출 핸들러 (엔터키 동작 포함)
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        searchPlace(searchKeyword);
+    };
 
     return (
         <>
-            <Navbar expand="md" bg="white" className="shadow-sm p-1 mb-4">
+            <Navbar expand="md" bg="white" className="shadow-sm p-1">
                 <Container fluid>
                     <Row className="w-100 align-items-center">
                         {/* 로고 (좌측) */}
@@ -139,10 +186,21 @@ const TopBar = () => {
                                         type="text"
                                         placeholder="어떤 데이트를 하고 싶으신가요?"
                                         className="custom-input w-100"
+                                        onChange={(e) => {
+                                            setSearchKeyword(e.target.value);
+                                            console.log(searchKeyword);
+                                        }}
+                                        onKeyPress={(e) => {
+                                            if (e.key === "Enter") {
+                                                handleSubmit(e);
+                                            }
+                                        }}
                                     />
                                     <FaSearch
                                         className="search-icon"
-                                        onClick={() => navigate("/searchlist")}
+                                        onClick={() =>
+                                            searchPlace(searchKeyword)
+                                        }
                                     />
                                 </Form>
 
@@ -180,10 +238,20 @@ const TopBar = () => {
                                             )}
                                         </Dropdown.Toggle>
 
-                                        <Dropdown.Menu>
+                                        <Dropdown.Menu className="custom-dropdown">
                                             <Dropdown.Item
                                                 as={Link}
                                                 to="/mypage"
+                                                style={
+                                                    location.pathname ===
+                                                    "/mypage"
+                                                        ? {
+                                                              backgroundColor:
+                                                                  "#ffe7e7",
+                                                              color: "#333",
+                                                          }
+                                                        : {}
+                                                }
                                             >
                                                 마이페이지
                                             </Dropdown.Item>
@@ -191,6 +259,16 @@ const TopBar = () => {
                                                 <Dropdown.Item
                                                     as={Link}
                                                     to="/connect-couple"
+                                                    style={
+                                                        location.pathname ===
+                                                        "/connect-couple"
+                                                            ? {
+                                                                  backgroundColor:
+                                                                      "#ffe7e7",
+                                                                  color: "#333",
+                                                              }
+                                                            : {}
+                                                    }
                                                 >
                                                     커플 연결하기
                                                 </Dropdown.Item>
@@ -198,6 +276,16 @@ const TopBar = () => {
                                                 <Dropdown.Item
                                                     as={Link}
                                                     to="/calendar"
+                                                    style={
+                                                        location.pathname ===
+                                                        "/calendar"
+                                                            ? {
+                                                                  backgroundColor:
+                                                                      "#ffe7e7",
+                                                                  color: "#333",
+                                                              }
+                                                            : {}
+                                                    }
                                                 >
                                                     커플 캘린더
                                                 </Dropdown.Item>
@@ -206,12 +294,32 @@ const TopBar = () => {
                                             <Dropdown.Item
                                                 as={Link}
                                                 to="/editpreference"
+                                                style={
+                                                    location.pathname ===
+                                                    "/editpreference"
+                                                        ? {
+                                                              backgroundColor:
+                                                                  "#ffe7e7",
+                                                              color: "#333",
+                                                          }
+                                                        : {}
+                                                }
                                             >
                                                 선호도 수정
                                             </Dropdown.Item>
                                             <Dropdown.Item
                                                 as={Link}
                                                 to="/mypagelikes"
+                                                style={
+                                                    location.pathname ===
+                                                    "/mypagelikes"
+                                                        ? {
+                                                              backgroundColor:
+                                                                  "#ffe7e7",
+                                                              color: "#333",
+                                                          }
+                                                        : {}
+                                                }
                                             >
                                                 좋아요 리스트
                                             </Dropdown.Item>
@@ -252,9 +360,21 @@ const TopBar = () => {
                                         outline: "none",
                                         boxShadow: "none",
                                     }}
+                                    onChange={(e) => {
+                                        setSearchKeyword(e.target.value);
+                                        console.log(searchKeyword);
+                                    }}
+                                    onKeyPress={(e) => {
+                                        if (e.key === "Enter") {
+                                            handleSubmit(e);
+                                        }
+                                    }}
                                 />
                                 <FaSearch
                                     className="position-absolute"
+                                    onClick={() =>
+                                        searchPlace(searchKeyword)
+                                    }
                                     style={{
                                         right: "10px",
                                         top: "50%",
@@ -274,6 +394,14 @@ const TopBar = () => {
                                     as={Link}
                                     to="/search"
                                     className="text-gray-700 my-1"
+                                    style={
+                                        location.pathname === "/search"
+                                            ? {
+                                                  fontSize: "1.1rem",
+                                                  color: "#e91e63",
+                                              }
+                                            : { fontSize: "17px" }
+                                    }
                                 >
                                     탐색
                                 </Nav.Link>
@@ -281,6 +409,15 @@ const TopBar = () => {
                                     as={Link}
                                     to="/calendar"
                                     className="text-gray-700 my-1"
+                                    style={
+                                        location.pathname === "/calendar"
+                                            ? {
+                                                  fontSize: "1.1rem",
+                                                  color: "#e91e63",
+                                              }
+                                            : { fontSize: "17px" }
+                                    }
+                                    onClick={handleCalendarClick}
                                 >
                                     캘린더
                                 </Nav.Link>
@@ -289,25 +426,6 @@ const TopBar = () => {
                     </Row>
                 </Container>
             </Navbar>
-
-            {/* 로그인 요청 모달 */}
-            <Modal show={showModal} onHide={() => setShowModal(false)} centered>
-                <Modal.Body>캘린더를 이용하려면 로그인해야 합니다.</Modal.Body>
-                <Modal.Footer>
-                    <Button
-                        variant="secondary"
-                        onClick={() => setShowModal(false)}
-                    >
-                        닫기
-                    </Button>
-                    <Button
-                        variant="primary"
-                        onClick={() => navigate("/login")}
-                    >
-                        로그인하기
-                    </Button>
-                </Modal.Footer>
-            </Modal>
         </>
     );
 };

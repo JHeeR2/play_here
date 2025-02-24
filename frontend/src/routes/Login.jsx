@@ -2,23 +2,28 @@ import { useEffect, useRef } from "react";
 // import Container_ from 'postcss/lib/container';
 import TopBar from "../components/TopBar";
 import "../css/LogForm.scss";
-import KakaoLoginButton from "../components/Login/KakaoLogin.jsx"
-import NaverLoginButton from "../components/Login/NaverLogin.jsx"
-import { Link, useNavigate, } from "react-router-dom";
+import KakaoLoginButton from "../components/Login/KakaoLogin.jsx";
+import NaverLoginButton from "../components/Login/NaverLogin.jsx";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import Swal from "sweetalert2";
 
 const Login = () => {
+    const remoteIp = import.meta.env.VITE_REMOTE_IP;
+    const port = import.meta.env.VITE_PORT;
+
     const idRef = useRef(null);
     const passwordRef = useRef(null);
     const rememberMeRef = useRef(null);
-    const navigate = useNavigate();  
+    const navigate = useNavigate();
+    const location = useLocation();
 
     // ✅ 1. 페이지 로드 시 localStorage에서 아이디 불러오기
     useEffect(() => {
         const savedId = localStorage.getItem("savedUserId");
         if (savedId) {
             idRef.current.value = savedId;
-            rememberMeRef.current.checked = true;  // 체크박스 자동 체크
+            rememberMeRef.current.checked = true; // 체크박스 자동 체크
         }
     }, []);
 
@@ -29,41 +34,50 @@ const Login = () => {
         const password = passwordRef.current.value;
         const rememberMe = rememberMeRef.current.checked;
 
-        if (userId === '') {
-            alert("아이디를 입력해주세요.");
-            idRef.current.focus();
-            return;
-        }
-
-        if (password === '') {
-            alert("비밀번호를 입력해주세요.");
-            passwordRef.current.focus();
-            return;
-        }
-
         try {
-            const response = await axios.post('http://localhost:8586/api/login'
-            , { userId, password }
-            , { withCredentials: true });
+            const response = await axios.post(
+                "/api/login",
+                { userId, password },
+                { withCredentials: true }
+            );
+            console.log(response);
+            console.log(response.data);
 
-            if (response.data === 'success') {
-                alert('로그인 성공!');
-                
+            if (response.status === 200) {
                 // ✅ 3. 아이디 저장 또는 삭제
                 if (rememberMe) {
-                    localStorage.setItem("savedUserId", userId);  // 아이디 저장
+                    localStorage.setItem("savedUserId", userId); // 아이디 저장
                 } else {
-                    localStorage.removeItem("savedUserId");       // 저장된 아이디 삭제
+                    localStorage.removeItem("savedUserId"); // 저장된 아이디 삭제
                 }
 
-                window.location.href = '/';                
-            } 
+                // 리디렉트 처리 수정
+                const redirectPath = new URLSearchParams(location.search).get(
+                    "redirect"
+                );
+                if (redirectPath) {
+                    window.location.href = redirectPath;
+                } else {
+                    window.location.href = "/";
+                }
+            }
         } catch (error) {
             if (error.response && error.response.status === 401) {
-                alert('아이디 또는 비밀번호가 올바르지 않습니다.');
+                Swal.fire({
+                    icon: "warning",
+                    text: "아이디 또는 비밀번호가 올바르지 않습니다.",
+                    timer: 1000,
+                    showConfirmButton: false,
+                });
+            }else if (error.response && error.response.status === 403) {
+                Swal.fire({
+                    icon: "error",
+                    text: "이 계정은 탈퇴한 회원입니다. 로그인할 수 없습니다.",
+                    showConfirmButton: true,
+                });
             } else {
-                console.error('로그인 오류:', error);
-                alert('서버 오류가 발생했습니다.');
+                console.error("로그인 오류:", error);
+                alert("서버 오류가 발생했습니다.");
             }
         }
     };
@@ -74,15 +88,22 @@ const Login = () => {
 
             <TopBar />
             <div className="loginContainer">
-                
                 <h3 className="loginTitle">로그인</h3>
-                <b className="loginMessage">여기놀자에서 특별한 하루를 만들어 보세요</b>
+                <b className="loginMessage">
+                    여기놀자에서 특별한 하루를 만들어 보세요
+                </b>
 
-                <form action="" method="post" className="loginForm" onSubmit={formValidate}>
+                <form
+                    action=""
+                    method="post"
+                    className="loginForm"
+                    onSubmit={formValidate}
+                >
                     <div className="first-input input__block first-input__block">
                         <input
                             placeholder="아이디"
                             className="input"
+                            required
                             ref={idRef}
                         />
                     </div>
@@ -91,41 +112,65 @@ const Login = () => {
                             type="password"
                             placeholder="비밀번호"
                             className="input"
+                            required
                             ref={passwordRef}
                         />
                     </div>
                     <div className="remember">
-                        <input type="checkbox" id="rememberMe" ref={rememberMeRef}/>
-                        <label htmlFor="rememberMe" style={{ marginLeft: '8px' }}>아이디 저장</label>
+                        <input
+                            type="checkbox"
+                            id="rememberMe"
+                            ref={rememberMeRef}
+                        />
+                        <label
+                            htmlFor="rememberMe"
+                            style={{ marginLeft: "8px" }}
+                        >
+                            아이디 저장
+                        </label>
                     </div>
-                    <input type="submit" className="signin__btn" value="로그인" />
+                    <input
+                        type="submit"
+                        className="signin__btn"
+                        value="로그인"
+                    />
                 </form>
 
                 <div className="find-me">
-                    <span className="find-id" onClick={()=> navigate('/find-id')}>
-                            아이디 찾기
+                    <span
+                        className="find-id"
+                        onClick={() => navigate("/find-id")}
+                    >
+                        아이디 찾기
                     </span>
                     /
-                    <span className="find-pwd" onClick={()=> navigate('/find-pwd')}>
+                    <span
+                        className="find-pwd"
+                        onClick={() => navigate("/find-pwd")}
+                    >
                         비밀번호 찾기
                     </span>
                 </div>
-                
-                <Link to={'/register-terms'}>
-                    <span className="regist">    
-                        회원가입
-                    </span>  
-                </Link>    
+
+                <Link to={"/register-terms"}>
+                    <span className="regist">회원가입</span>
+                </Link>
 
                 <div className="separator">
                     <p>OR</p>
                 </div>
 
                 <div className="kakao__btn">
-                    <KakaoLoginButton />
+                    <KakaoLoginButton
+                        
+                    />
                 </div>
                 <div className="naver__btn">
-                    <NaverLoginButton />
+                    <NaverLoginButton 
+                    onClick={(e) => {
+                        e.preventDefault();
+                        alert("구현중입니다.")
+                    }}/>
                 </div>
             </div>
         </>
